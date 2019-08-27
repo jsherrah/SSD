@@ -52,6 +52,11 @@ class DatasetCatalog:
             "data_dir": "val2014",
             "ann_file": "annotations/instances_val2014.json"
         },
+        'ftsy_grand_dataset': {
+            "data_dir": "/data/jamie/ftsy/grand/demoSessions",
+            "ann_file": "boundingBoxes3D.json"
+    },
+
     }
 
     @staticmethod
@@ -78,5 +83,8 @@ class DatasetCatalog:
                 ann_file=os.path.join(coco_root, attrs["ann_file"]),
             )
             return dict(factory="COCODataset", args=args)
+        elif name == 'ftsy_grand_dataset':
+            attrs = DatasetCatalog.DATASETS[name]
+            return dict(factory="FTSYGrandDataset", args=attrs)
 
         raise RuntimeError("Dataset not available: {}".format(name))
