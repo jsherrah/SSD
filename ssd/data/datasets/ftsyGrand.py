@@ -4,6 +4,7 @@ from ssd.structures.container import Container
 import json
 from PIL import Image
 import bbutils as bb
+import os
 
 class FTSYGrandDataset(torch.utils.data.Dataset):
     class_names = ('__background__',
@@ -13,19 +14,19 @@ class FTSYGrandDataset(torch.utils.data.Dataset):
     LABEL_LEFT_FOOT  = 1
 
     # split is train or test
-    def __init__(self, data_dir, ann_file, split, transform=None, target_transform=None):
+    def __init__(self, data_dir, sessionListFile, ann_file, transform=None, target_transform=None):
         self.data_dir = data_dir
         self.ann_file = ann_file
-        self.split = split
+        self.sessionListFile = sessionListFile
         self.transform = transform
         self.target_transform = target_transform
 
         # Load the session list
-        sessionsListFile = '%s/%s.txt' % (self.data_dir, self.split)
-        with open(sessionsListFile, 'r') as f:
+        sessionListFile = '%s/%s' % (self.data_dir, self.sessionListFile)
+        with open(sessionListFile, 'r') as f:
             self.sessionNames = f.read().splitlines()
-        print('FTSYGrandDataset {} set: loading {} sessions:\n{}'.format(
-            self.split, len(self.sessionNames), self.sessionNames
+        print('FTSYGrandDataset {} set: loading {} sessions:\n'.format(
+            os.path.splitext(sessionListFile)[0], len(self.sessionNames),
         ))
         # Compile a list of image filenames and corresponding ground truth.  Then shuffle them.
         self.imageFilenames = []
@@ -111,8 +112,9 @@ class FTSYGrandDataset(torch.utils.data.Dataset):
 
 if __name__ == '__main__':
     ds = FTSYGrandDataset(data_dir="/data/jamie/ftsy/grand/demoSessions",
+                          sessionListFile="test.txt",
                           ann_file="boundingBoxes3D.json",
-                          split='test')
+                          )
     print(ds)
 
     # Show some results
@@ -125,4 +127,6 @@ if __name__ == '__main__':
         plt.imshow(img)
         bb.bbPlot(plt.gca(), gt['boxes'][0,:], colour=(1,0,0), thickness=2, filled=False)
         bb.bbPlot(plt.gca(), gt['boxes'][1,:], colour=(0,1,0), thickness=2, filled=False)
+        assert gt['labels'][0] == FTSYGrandDataset.LABEL_RIGHT_FOOT
+        assert gt['labels'][1] == FTSYGrandDataset.LABEL_LEFT_FOOT
         plt.waitforbuttonpress()

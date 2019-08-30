@@ -52,10 +52,16 @@ class DatasetCatalog:
             "data_dir": "val2014",
             "ann_file": "annotations/instances_val2014.json"
         },
-        'ftsy_grand_dataset': {
+        'ftsy_grand_dataset_train': {
             "data_dir": "/data/jamie/ftsy/grand/demoSessions",
-            "ann_file": "boundingBoxes3D.json"
-    },
+            "sessionListFile": "train.txt",
+            "ann_file": "boundingBoxes3D.json",
+        },
+        'ftsy_grand_dataset_test': {
+            "data_dir": "/data/jamie/ftsy/grand/demoSessions",
+            "sessionListFile": "test.txt",
+            "ann_file": "boundingBoxes3D.json",
+        },
 
     }
 
@@ -83,7 +89,7 @@ class DatasetCatalog:
                 ann_file=os.path.join(coco_root, attrs["ann_file"]),
             )
             return dict(factory="COCODataset", args=args)
-        elif name == 'ftsy_grand_dataset':
+        elif 'ftsy_grand_dataset' in name:
             attrs = DatasetCatalog.DATASETS[name]
             return dict(factory="FTSYGrandDataset", args=attrs)
 
