@@ -3,15 +3,32 @@ import numpy as np
 from ssd.structures.container import Container
 import json
 from PIL import Image
-import bbutils as bb
+import bbutils
 import os
+
+def inRange(x, lo, hi):
+    return np.logical_and(lo <= x, x <= hi)
+
+def bbToCorners(bb):
+    x, y, w, h = bb
+    return [x, y, x+w, y+h]
+
+def bbFromCorners(xyxy):
+    x1, y1, x2, y2 = xyxy
+    return [x1, y1, x2-x1, y2-y1]
+
+def bbScaleToImg(img, bbIn):
+    H, W = img.shape[:2]
+    bbOut = [bbIn[0]*W, bbIn[1]*H, bbIn[2]*W, bbIn[3]*H]
+    return bbOut
 
 class FTSYGrandDataset(torch.utils.data.Dataset):
     class_names = ('__background__',
                    'rightFoot', 'leftFoot')
 
-    LABEL_RIGHT_FOOT = 0
-    LABEL_LEFT_FOOT  = 1
+    # Class names start at 1, because in voc.py background is first class.
+    LABEL_RIGHT_FOOT = 1
+    LABEL_LEFT_FOOT  = 2
 
     # split is train or test
     def __init__(self, data_dir, sessionListFile, ann_file, transform=None, target_transform=None):
@@ -54,8 +71,8 @@ class FTSYGrandDataset(torch.utils.data.Dataset):
             for k, v in annoBB.items():
                 self.imageFilenames.append(k)
                 self.groundTruth[k] = {
-                    'rightFoot': v['rightFoot']['boundingBox'],
-                    'leftFoot':  v['leftFoot']['boundingBox'],
+                    'rightFoot': bbToCorners(v['rightFoot']['boundingBox']),
+                    'leftFoot':  bbToCorners(v['leftFoot'] ['boundingBox']),
                     }
 
         print('Loaded {} images from {} sessions'.format(len(self.imageFilenames), len(self.sessionNames)))
@@ -74,6 +91,21 @@ class FTSYGrandDataset(torch.utils.data.Dataset):
 
         # load the bounding boxes in x1, y1, x2, y2 order.
         boxes = np.vstack([gt['rightFoot'], gt['leftFoot']]).astype(np.float32)
+        # Make these relative to image dimensions.
+        imgW, imgH = float(image.shape[1]), float(image.shape[0])
+
+        if 1:
+            boxes /= [imgW, imgH, imgW, imgH]
+            if 1:
+                # Clamp to image.  Yes, the can go outside.
+                boxes = np.maximum(boxes, 0.0)
+                boxes = np.minimum(boxes, 1.0)
+
+            #print('boxes = {}'.format(boxes))
+            for i in range(boxes.shape[0]):
+                bb = boxes[i,:]
+                assert np.all(inRange(bb, 0, 1)), 'corners = {}, img size = {}x{}'.format(bb, imgW, imgH)
+
         # and labels
         labels = np.array([self.LABEL_RIGHT_FOOT, self.LABEL_LEFT_FOOT], dtype=np.int64)
 
@@ -97,8 +129,9 @@ class FTSYGrandDataset(torch.utils.data.Dataset):
         return dat
 
     def readImage(self, fn):
-        image = Image.open(fn)#.convert("RGB")
-        image = np.array(image)
+        image = Image.open(fn).convert("RGB")
+        image = np.array(image)#.astype(np.float32)
+        #print('image type = {}'.format(image.dtype))
         return image
 
     def __str__(self):
@@ -125,8 +158,8 @@ if __name__ == '__main__':
     for img, gt, i in ds:
         plt.clf()
         plt.imshow(img)
-        bb.bbPlot(plt.gca(), gt['boxes'][0,:], colour=(1,0,0), thickness=2, filled=False)
-        bb.bbPlot(plt.gca(), gt['boxes'][1,:], colour=(0,1,0), thickness=2, filled=False)
+        bbutils.bbPlot(plt.gca(), bbFromCorners(bbScaleToImg(img, gt['boxes'][0,:])), colour=(1,0,0), thickness=2, filled=False)
+        bbutils.bbPlot(plt.gca(), bbFromCorners(bbScaleToImg(img, gt['boxes'][1,:])), colour=(0,1,0), thickness=2, filled=False)
         assert gt['labels'][0] == FTSYGrandDataset.LABEL_RIGHT_FOOT
         assert gt['labels'][1] == FTSYGrandDataset.LABEL_LEFT_FOOT
         plt.waitforbuttonpress()

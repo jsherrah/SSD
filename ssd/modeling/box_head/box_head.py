@@ -21,6 +21,7 @@ class SSDBoxHead(nn.Module):
 
     def forward(self, features, targets=None):
         cls_logits, bbox_pred = self.predictor(features)
+        #print('SSDBoxHead: cls_logits = {}\nbobox_pred={}'.format(cls_logits.dtype, bbox_pred.dtype))
         if self.training:
             return self._forward_train(cls_logits, bbox_pred, targets)
         else:

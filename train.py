@@ -2,6 +2,8 @@ import argparse
 import logging
 import os
 
+os.environ['TORCH_MODEL_ZOO'] = '/data/SSD/models'
+
 import torch
 import torch.distributed as dist
 

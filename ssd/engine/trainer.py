@@ -81,11 +81,14 @@ def do_train(cfg, model,
         loss_dict = model(images, targets=targets)
         loss = sum(loss for loss in loss_dict.values())
 
+        #print('loss dict = {}'.format(loss_dict))
+
+        assert torch.all(torch.isfinite(images.flatten()))
+
         # reduce losses over all GPUs for logging purposes
         loss_dict_reduced = reduce_loss_dict(loss_dict)
         losses_reduced = sum(loss for loss in loss_dict_reduced.values())
         meters.update(total_loss=losses_reduced, **loss_dict_reduced)
-
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -117,6 +120,7 @@ def do_train(cfg, model,
                 for loss_name, loss_item in loss_dict_reduced.items():
                     summary_writer.add_scalar('losses/{}'.format(loss_name), loss_item, global_step=global_step)
                 summary_writer.add_scalar('lr', optimizer.param_groups[0]['lr'], global_step=global_step)
+
 
         if iteration % args.save_step == 0:
             checkpointer.save("model_{:06d}".format(iteration), **arguments)
