@@ -2,10 +2,15 @@ import torch.utils.data
 import numpy as np
 from ssd.structures.container import Container
 import json
+from PIL import Image
+import bbutils as bb
 
 class FTSYGrandDataset(torch.utils.data.Dataset):
     class_names = ('__background__',
                    'rightFoot', 'leftFoot')
+
+    LABEL_RIGHT_FOOT = 0
+    LABEL_LEFT_FOOT  = 1
 
     # split is train or test
     def __init__(self, data_dir, ann_file, split, transform=None, target_transform=None):
@@ -53,18 +58,23 @@ class FTSYGrandDataset(torch.utils.data.Dataset):
                     }
 
         print('Loaded {} images from {} sessions'.format(len(self.imageFilenames), len(self.sessionNames)))
-        print(json.dumps(self.groundTruth, indent=4))
+        #!!print(json.dumps(self.groundTruth, indent=4))
         # Shuffle the filenames.
         np.random.shuffle(self.imageFilenames)
 
     def __getitem__(self, index):
+        fn = self.imageFilenames[index]
+
         # load the image as a PIL Image
-        image = None
+        image = self.readImage(fn)
+
+        # Get ground truth
+        gt = self.groundTruth[fn]
 
         # load the bounding boxes in x1, y1, x2, y2 order.
-        boxes = np.array((N, 4), dtype=np.float32)
+        boxes = np.vstack([gt['rightFoot'], gt['leftFoot']]).astype(np.float32)
         # and labels
-        labels = np.array((N, ), dtype=np.int64)
+        labels = np.array([self.LABEL_RIGHT_FOOT, self.LABEL_LEFT_FOOT], dtype=np.int64)
 
         if self.transform:
             image, boxes, labels = self.transform(image, boxes, labels)
@@ -85,7 +95,34 @@ class FTSYGrandDataset(torch.utils.data.Dataset):
             dat = json.load(f)
         return dat
 
+    def readImage(self, fn):
+        image = Image.open(fn)#.convert("RGB")
+        image = np.array(image)
+        return image
+
+    def __str__(self):
+        s = 'FTSYGrandDataset has {} images:\n'.format(len(self))
+        for img, gt, i in self:
+            s += '\t{:8d}: right = {}, left = {}, filename = {}\n'.format(i, gt['boxes'][0,:], gt['boxes'][1,:], self.imageFilenames[i])
+            if i > 10:
+                s += '\t...\n'
+                break
+        return s
+
 if __name__ == '__main__':
     ds = FTSYGrandDataset(data_dir="/data/jamie/ftsy/grand/demoSessions",
                           ann_file="boundingBoxes3D.json",
                           split='test')
+    print(ds)
+
+    # Show some results
+    import matplotlib.pyplot as plt
+    plt.ion()
+    plt.figure()
+
+    for img, gt, i in ds:
+        plt.clf()
+        plt.imshow(img)
+        bb.bbPlot(plt.gca(), gt['boxes'][0,:], colour=(1,0,0), thickness=2, filled=False)
+        bb.bbPlot(plt.gca(), gt['boxes'][1,:], colour=(0,1,0), thickness=2, filled=False)
+        plt.waitforbuttonpress()
