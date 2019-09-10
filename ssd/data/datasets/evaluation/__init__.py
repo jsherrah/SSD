@@ -1,7 +1,7 @@
-from ssd.data.datasets import VOCDataset, COCODataset
+from ssd.data.datasets import VOCDataset, COCODataset, FTSYGrandDataset
 from .coco import coco_evaluation
 from .voc import voc_evaluation
-
+from .ftsy import ftsy_evaluation
 
 def evaluate(dataset, predictions, output_dir, **kwargs):
     """evaluate dataset using different methods based on dataset type.
@@ -20,5 +20,7 @@ def evaluate(dataset, predictions, output_dir, **kwargs):
         return voc_evaluation(**args)
     elif isinstance(dataset, COCODataset):
         return coco_evaluation(**args)
+    elif isinstance(dataset, FTSYGrandDataset):
+        return ftsy_evaluation(**args)
     else:
         raise NotImplementedError

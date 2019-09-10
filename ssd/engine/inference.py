@@ -36,16 +36,31 @@ def _accumulate_predictions_from_multiple_gpus(predictions_per_gpu):
 
 def compute_on_dataset(model, data_loader, device):
     results_dict = {}
+
+    #!!
+    idx = 0
+
     for batch in tqdm(data_loader):
         images, targets, image_ids = batch
+
+        #!!
+        #print('its batch {}: cache = {}'.format(idx, data_loader.dataset.cachedInfo))
+        idx += 1
+#        continue
+
         cpu_device = torch.device("cpu")
         with torch.no_grad():
+            #print('evaluating model...')
             outputs = model(images.to(device))
-
+            #print('done.  transferring output to cpu')
             outputs = [o.to(cpu_device) for o in outputs]
+            #print('done.  stashing results')
+
         results_dict.update(
             {img_id: result for img_id, result in zip(image_ids, outputs)}
         )
+        #print('done')
+
     return results_dict
 
 
@@ -63,7 +78,9 @@ def inference(model, data_loader, dataset_name, device, output_folder=None, use_
     if not is_main_process():
         return
     if output_folder:
+        logger.info('saving predictions...')
         torch.save(predictions, predictions_path)
+    #print('before evaluation, data cache = {}'.format(dataset.cachedInfo))
     return evaluate(dataset=dataset, predictions=predictions, output_dir=output_folder, **kwargs)
 
 

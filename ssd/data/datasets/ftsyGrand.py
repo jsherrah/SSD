@@ -9,6 +9,9 @@ import os
 def inRange(x, lo, hi):
     return np.logical_and(lo <= x, x <= hi)
 
+def clamp(x, lo, hi):
+    return np.minimum(np.maximum(x, lo), hi)
+
 def bbToCorners(bb):
     x, y, w, h = bb
     return [x, y, x+w, y+h]
@@ -37,6 +40,8 @@ class FTSYGrandDataset(torch.utils.data.Dataset):
         self.sessionListFile = sessionListFile
         self.transform = transform
         self.target_transform = target_transform
+        # this does not work for some reason.  multi-threading?
+        # self.cachedInfo = {}
 
         # Load the session list
         sessionListFile = '%s/%s' % (self.data_dir, self.sessionListFile)
@@ -85,29 +90,28 @@ class FTSYGrandDataset(torch.utils.data.Dataset):
 
         # load the image as a PIL Image
         image = self.readImage(fn)
+        imgW, imgH = image.shape[1], image.shape[0]
 
-        # Get ground truth
-        gt = self.groundTruth[fn]
+        # Cache size for later in evaluation...
+#        if fn not in self.cachedInfo:
+#            imgInfo = {'width': imgW, 'height': imgH}
+#            #print('caching info for fn = {}'.format(fn))
+#            self.cachedInfo[fn] = imgInfo
 
-        # load the bounding boxes in x1, y1, x2, y2 order.
-        boxes = np.vstack([gt['rightFoot'], gt['leftFoot']]).astype(np.float32)
-        # Make these relative to image dimensions.
-        imgW, imgH = float(image.shape[1]), float(image.shape[0])
+        boxes, labels = self._get_annotation(fn)
 
-        if 1:
-            boxes /= [imgW, imgH, imgW, imgH]
-            if 1:
-                # Clamp to image.  Yes, the can go outside.
-                boxes = np.maximum(boxes, 0.0)
-                boxes = np.minimum(boxes, 1.0)
+        # Clamp to image dimensions.
+        boxes[:,0] = clamp(boxes[:,0], 0, imgW-1)
+        boxes[:,1] = clamp(boxes[:,1], 0, imgH-1)
+        boxes[:,2] = clamp(boxes[:,2], 0, imgW-1)
+        boxes[:,3] = clamp(boxes[:,3], 0, imgH-1)
 
-            #print('boxes = {}'.format(boxes))
-            for i in range(boxes.shape[0]):
-                bb = boxes[i,:]
-                assert np.all(inRange(bb, 0, 1)), 'corners = {}, img size = {}x{}'.format(bb, imgW, imgH)
-
-        # and labels
-        labels = np.array([self.LABEL_RIGHT_FOOT, self.LABEL_LEFT_FOOT], dtype=np.int64)
+        for i in range(boxes.shape[0]):
+            bb = boxes[i,:]
+            assert np.all(inRange(bb[0], 0, imgW-1)), 'corners= {}, img size= {}x{}'.format(bb, imgW, imgH)
+            assert np.all(inRange(bb[2], 0, imgW-1)), 'corners= {}, img size= {}x{}'.format(bb, imgW, imgH)
+            assert np.all(inRange(bb[1], 0, imgH-1)), 'corners= {}, img size= {}x{}'.format(bb, imgW, imgH)
+            assert np.all(inRange(bb[3], 0, imgH-1)), 'corners= {}, img size= {}x{}'.format(bb, imgW, imgH)
 
         if self.transform:
             image, boxes, labels = self.transform(image, boxes, labels)
@@ -122,6 +126,52 @@ class FTSYGrandDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.imageFilenames)
+
+    def get_img_info(self, index):
+        fn = self.imageFilenames[index]
+        #if fn in self.cachedInfo:
+        #    return self.cachedInfo[fn]
+        #else:
+        #print('get_img_info: loading image {}!\ncache={}'.format(fn, self.cachedInfo))
+        image = self.readImage(fn)
+        imgW, imgH = float(image.shape[1]), float(image.shape[0])
+        imgInfo = {'width': imgW, 'height': imgH}
+        #self.cachedInfo[fn] = dict(imgInfo)
+        return imgInfo
+
+    def get_annotation(self, index):
+        fn = self.imageFilenames[index]
+        return fn, self._get_annotation(fn)
+
+    def _get_annotation(self, imageFn):
+        # Get ground truth
+        gt = self.groundTruth[imageFn]
+
+        # load the bounding boxes in x1, y1, x2, y2 order.
+        boxes = np.vstack([gt['rightFoot'], gt['leftFoot']]).astype(np.float32)
+
+        if 0:  #!!
+            # Make these relative to image dimensions.
+            image = self.readImage(imageFn) #!!!
+            imgW, imgH = float(image.shape[1]), float(image.shape[0])
+
+            if 1:
+                boxes /= [imgW, imgH, imgW, imgH]
+                if 1:
+                    # Clamp to image.  Yes, the can go outside.
+                    boxes = np.maximum(boxes, 0.0)
+                    boxes = np.minimum(boxes, 1.0)
+
+                #print('boxes = {}'.format(boxes))
+                for i in range(boxes.shape[0]):
+                    bb = boxes[i,:]
+                    assert np.all(inRange(bb, 0, 1)), 'corners = {}, img size = {}x{}'.format(bb, imgW, imgH)
+
+        # and labels
+        labels = np.array([self.LABEL_RIGHT_FOOT, self.LABEL_LEFT_FOOT], dtype=np.int64)
+
+        return boxes, labels
+
 
     def readAnnotationsFile(self, fn):
         with open(fn, 'r') as f:

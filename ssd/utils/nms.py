@@ -7,6 +7,7 @@ try:
     _nms = torch_extension.nms
 except ImportError:
     if torchvision.__version__ >= '0.3.0':
+        print('Using torchvision nms')
         _nms = torchvision.ops.nms
     else:
         from .python_nms import python_nms

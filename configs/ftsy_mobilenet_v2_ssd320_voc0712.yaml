@@ -18,13 +18,19 @@ DATASETS:
   TRAIN: ("ftsy_grand_dataset_train", )
   TEST: ("ftsy_grand_dataset_test", )
 SOLVER:
-#  MAX_ITER: 120000
-  MAX_ITER: 2000
+  MAX_ITER: 120000
+#  MAX_ITER: 2000
   LR_STEPS: [80000, 100000]
   GAMMA: 0.1
   BATCH_SIZE: 32
   LR: 1e-4
 #  WARMUP_FACTOR: 0.01 
 #  WARMUP_ITERS: 2000
-  
+TEST:
+  BATCH_SIZE: 32
+ 
 OUTPUT_DIR: 'outputs/ftsy_mobilenet_v2_ssd320_voc0712'
+
+
+DATA_LOADER:
+  NUM_WORKERS: 24

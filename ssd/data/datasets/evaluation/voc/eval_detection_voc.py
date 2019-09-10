@@ -109,6 +109,7 @@ def eval_detection_voc(
 
     """
 
+    print('eval_detection_voc: computing precision recall...')
     prec, rec = calc_detection_voc_prec_rec(pred_bboxes,
                                             pred_labels,
                                             pred_scores,
@@ -117,7 +118,9 @@ def eval_detection_voc(
                                             gt_difficults,
                                             iou_thresh=iou_thresh)
 
+    print('eval_detection_voc: computing average precision...')
     ap = calc_detection_voc_ap(prec, rec, use_07_metric=use_07_metric)
+    print('eval_detection_voc:   - done.')
 
     return {'ap': ap, 'map': np.nanmean(ap)}
 
