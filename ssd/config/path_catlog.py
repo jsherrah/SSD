@@ -53,12 +53,14 @@ class DatasetCatalog:
             "ann_file": "annotations/instances_val2014.json"
         },
         'ftsy_grand_dataset_train': {
-            "data_dir": "/data/jamie/ftsy/grand/demoSessions",
+#            "data_dir": "/data/jamie/ftsy/grand/demoSessions",
+            "data_dir": "/data/SSD/data_ssd/grand/demoSessions",
             "sessionListFile": "train.txt",
             "ann_file": "boundingBoxes3D.json",
         },
         'ftsy_grand_dataset_test': {
-            "data_dir": "/data/jamie/ftsy/grand/demoSessions",
+#            "data_dir": "/data/jamie/ftsy/grand/demoSessions",
+            "data_dir": "/data/SSD/data_ssd/grand/demoSessions",
             "sessionListFile": "test.txt",
             "ann_file": "boundingBoxes3D.json",
         },

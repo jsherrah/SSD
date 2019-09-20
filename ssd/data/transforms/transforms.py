@@ -351,12 +351,19 @@ class Expand(object):
 
 
 class RandomMirror(object):
+    # img is hxwxc
     def __call__(self, image, boxes, classes):
-        _, width, _ = image.shape
+        height, width, _ = image.shape
+        #print('RandomMirror: image shape = {}'.format(image.shape))
         if random.randint(2):
             image = image[:, ::-1]
             boxes = boxes.copy()
             boxes[:, 0::2] = width - boxes[:, 2::-2]
+            # JRS: to keep sense of left and right feet we must reflect vertically AND horizontally.
+            # That way it will work upside down too, which is what we want.
+            image = image[::-1]
+            boxes[:, 1::2] = height - boxes[:, 3::-2]
+
         return image, boxes, classes
 
 

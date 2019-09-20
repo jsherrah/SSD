@@ -18,6 +18,7 @@ def write_metric(eval_result, prefix, summary_writer, global_step):
         if isinstance(value, collections.Mapping):
             write_metric(value, tag, summary_writer, global_step)
         else:
+            print('summary writing {} = {} iter {}'.format(tag, value, global_step))
             summary_writer.add_scalar(tag, value, global_step=global_step)
 
 
@@ -126,10 +127,19 @@ def do_train(cfg, model,
             checkpointer.save("model_{:06d}".format(iteration), **arguments)
 
         if args.eval_step > 0 and iteration % args.eval_step == 0 and not iteration == max_iter:
-            eval_results = do_evaluation(cfg, model, distributed=args.distributed, iteration=iteration)
             if dist_util.get_rank() == 0 and summary_writer:
+                eval_results = do_evaluation(cfg, model, distributed=args.distributed, iteration=iteration)
+                print('Logging evaluation results...')
                 for eval_result, dataset in zip(eval_results, cfg.DATASETS.TEST):
                     write_metric(eval_result['metrics'], 'metrics/' + dataset, summary_writer, iteration)
+                    # For debugging
+                    if 0:
+                        print('writing backup accuracy to logger, eval_result = {}'.format(eval_result))
+                        summary_writer.add_scalar('accuracyBackup', eval_result['metrics']['mAP'], global_step=iteration)
+
+                # important!!
+                summary_writer.flush()
+
             model.train()  # *IMPORTANT*: change to train mode after eval.
 
     checkpointer.save("model_final", **arguments)
